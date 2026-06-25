@@ -1,6 +1,7 @@
 import os
 import requests
 import streamlit as st
+import re
 
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST")
@@ -37,10 +38,30 @@ def call_ollama(prompt, model, context=""):
         st.error(f"Exceção na chamada Ollama: {str(e)}")
         return ""
 
+def format_alternatives(text):
+    lines = text.split('\n')
+    new_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if re.match(r'^[a-d]\)', stripped):
+            new_lines.append('    ' + stripped + '  ')
+        else:
+            new_lines.append(line)
+    return '\n'.join(new_lines)
+
 def generate_plan(context, user_prompt, model):
     prompt = f"Com base no conteúdo fornecido, crie um plano de aula detalhado e roteiro para o tema: {user_prompt}. Inclua objetivos, materiais, atividades e avaliação."
-    return call_ollama(prompt, model, context)
+    raw = call_ollama(prompt, model, context)
+    return raw
 
 def generate_exercises(context, user_prompt, model):
-    prompt = f"Com base no conteúdo fornecido, crie uma lista de exercícios sobre o tema: {user_prompt}. Inclua questões de múltipla escolha e dissertativas, com gabarito."
-    return call_ollama(prompt, model, context)
+    prompt = (
+        f"Com base no conteúdo fornecido, crie uma lista com EXATAMENTE 10 questões de múltipla escolha sobre o tema: {user_prompt}. "
+        "Cada questão deve ter 4 alternativas (a, b, c, d). "
+        "No final, inclua um gabarito com as respostas corretas. "
+        "Formate cada alternativa em uma nova linha, com indentação."
+    )
+    raw = call_ollama(prompt, model, context)
+    if raw:
+        raw = format_alternatives(raw)
+    return raw

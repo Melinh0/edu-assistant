@@ -5,11 +5,31 @@ from PyPDF2 import PdfReader
 from io import BytesIO
 import base64
 import fitz
+import pytesseract
+from PIL import Image
+from pptx import Presentation
+from docx import Document as DocxDocument
 
 OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY")
 OCR_URL = "https://api.ocr.space/parse/image"
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST")
+
+def extract_text_from_file(file_bytes, filename, model=None):
+    ext = filename.split('.')[-1].lower()
+    if ext == 'pdf':
+        return extract_text_from_pdf(file_bytes, model)
+    elif ext in ['png', 'jpg', 'jpeg']:
+        return extract_text_from_image(file_bytes)
+    elif ext == 'pptx':
+        return extract_text_from_pptx(file_bytes)
+    elif ext == 'docx':
+        return extract_text_from_docx(file_bytes)
+    elif ext == 'txt':
+        return file_bytes.decode('utf-8', errors='ignore')
+    else:
+        st.warning(f"Formato {ext} não suportado para extração.")
+        return ""
 
 def extract_text_from_pdf(pdf_bytes, model=None):
     try:
@@ -21,10 +41,28 @@ def extract_text_from_pdf(pdf_bytes, model=None):
                 text += page_text + "\n"
         if text.strip():
             return text.strip()
-        else:
-            st.info("PyPDF2 não extraiu texto (PDF provavelmente escaneado).")
     except Exception as e:
         st.info(f"PyPDF2 falhou: {str(e)}")
+
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        text = ""
+        for page in doc:
+            page_text = page.get_text()
+            if page_text:
+                text += page_text + "\n"
+        doc.close()
+        if text.strip():
+            return text.strip()
+    except Exception as e:
+        st.info(f"PyMuPDF falhou: {str(e)}")
+
+    try:
+        ocr_text = extract_text_with_tesseract_pdf(pdf_bytes)
+        if ocr_text.strip():
+            return ocr_text
+    except Exception as e:
+        st.info(f"Tesseract falhou: {str(e)}")
 
     ocr_text = extract_text_with_ocr(pdf_bytes)
     if ocr_text.strip():
@@ -35,6 +73,60 @@ def extract_text_from_pdf(pdf_bytes, model=None):
         return extract_text_with_vision(pdf_bytes, model)
     else:
         st.warning("Não foi possível extrair texto. Considere usar um modelo com suporte a visão (ex: gemma4:31b).")
+        return ""
+
+def extract_text_with_tesseract_pdf(pdf_bytes):
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        all_text = ""
+        for page_num, page in enumerate(doc, start=1):
+            pix = page.get_pixmap()
+            img_bytes = pix.tobytes("png")
+            img = Image.open(BytesIO(img_bytes))
+            page_text = pytesseract.image_to_string(img, lang='por')
+            if page_text.strip():
+                all_text += f"\n--- Página {page_num} ---\n{page_text}\n"
+        doc.close()
+        return all_text.strip()
+    except Exception as e:
+        st.error(f"Erro no Tesseract para PDF: {str(e)}")
+        return ""
+
+def extract_text_from_image(file_bytes):
+    try:
+        img = Image.open(BytesIO(file_bytes))
+        text = pytesseract.image_to_string(img, lang='por')
+        return text.strip()
+    except Exception as e:
+        st.error(f"Erro no OCR de imagem: {str(e)}")
+        return ""
+
+def extract_text_from_pptx(file_bytes):
+    try:
+        prs = Presentation(BytesIO(file_bytes))
+        text = ""
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text + "\n"
+                if hasattr(shape, "notes_slide") and shape.notes_slide:
+                    notes = shape.notes_slide.notes_text_frame.text
+                    if notes:
+                        text += notes + "\n"
+        return text.strip()
+    except Exception as e:
+        st.error(f"Erro ao extrair texto do PowerPoint: {str(e)}")
+        return ""
+
+def extract_text_from_docx(file_bytes):
+    try:
+        doc = DocxDocument(BytesIO(file_bytes))
+        text = ""
+        for para in doc.paragraphs:
+            text += para.text + "\n"
+        return text.strip()
+    except Exception as e:
+        st.error(f"Erro ao extrair texto do DOCX: {str(e)}")
         return ""
 
 def extract_text_with_ocr(pdf_bytes):

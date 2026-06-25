@@ -181,7 +181,6 @@ cython_debug/
 .cursorindexingignore
 
 .env
-docs/
 __pycache__/
 *.pyc
 .DS_Store
@@ -189,3 +188,5 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+edu_assistant.egg-info
+docs
