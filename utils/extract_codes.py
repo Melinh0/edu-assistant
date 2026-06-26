@@ -47,7 +47,7 @@ def compile_py_to_txt(source_dir: str, output_dir: str, output_filename: str = "
 
 def main():
     source = os.getcwd()
-    output_dir = "extracted_code"
+    output_dir = "edu-assistant/extracted_code"
 
     if len(sys.argv) >= 2:
         source = sys.argv[1]
