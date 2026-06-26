@@ -44,13 +44,15 @@ def format_alternatives(text):
     for line in lines:
         stripped = line.strip()
         if re.match(r'^[a-d]\)', stripped):
-            new_lines.append('    ' + stripped + '  ')
+            new_lines.append('    - ' + stripped + '  ')
+        elif re.match(r'^[a-d]\.', stripped):
+            new_lines.append('    - ' + stripped + '  ')
         else:
             new_lines.append(line)
     return '\n'.join(new_lines)
 
 def generate_plan(context, user_prompt, model):
-    prompt = f"Com base no conteúdo fornecido, crie um plano de aula detalhado e roteiro para o tema: {user_prompt}. Inclua objetivos, materiais, atividades e avaliação."
+    prompt = f"Com base no conteúdo fornecido, crie um plano de aula detalhado e roteiro para o tema: {user_prompt}. Inclua objetivos, materiais, atividades e avaliação. Use formatação LaTeX para expressões matemáticas quando necessário."
     raw = call_ollama(prompt, model, context)
     return raw
 
@@ -58,8 +60,11 @@ def generate_exercises(context, user_prompt, model):
     prompt = (
         f"Com base no conteúdo fornecido, crie uma lista com EXATAMENTE 10 questões de múltipla escolha sobre o tema: {user_prompt}. "
         "Cada questão deve ter 4 alternativas (a, b, c, d). "
-        "No final, inclua um gabarito com as respostas corretas. "
-        "Formate cada alternativa em uma nova linha, com indentação."
+        "Para cada questão, escreva o enunciado em uma linha. Em seguida, escreva cada alternativa em uma nova linha, "
+        "iniciando com 'a) ', 'b) ', 'c) ', 'd) ' e indentada com 4 espaços. "
+        "No final, inclua um gabarito com as respostas corretas (ex: 'Gabarito: 1-a, 2-b, ...'). "
+        "Use formatação LaTeX para expressões matemáticas quando necessário. "
+        "Não use marcadores de lista como '*' ou '-', apenas as letras e parênteses."
     )
     raw = call_ollama(prompt, model, context)
     if raw:

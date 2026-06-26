@@ -7,6 +7,8 @@ import base64
 import fitz
 import pytesseract
 from PIL import Image
+import cv2
+import numpy as np
 from pptx import Presentation
 from docx import Document as DocxDocument
 
@@ -14,6 +16,37 @@ OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY")
 OCR_URL = "https://api.ocr.space/parse/image"
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST")
+
+def deskew(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.bitwise_not(gray)
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    coords = np.column_stack(np.where(thresh > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    if abs(angle) < 0.5:
+        return image
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    return rotated
+
+def preprocess_image(pil_img):
+    img = np.array(pil_img.convert('RGB'))
+    img = deskew(img)
+    img = cv2.resize(img, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    gray = clahe.apply(gray)
+    gray = cv2.bilateralFilter(gray, 9, 75, 75)
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 3)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2,2))
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+    return Image.fromarray(thresh)
 
 def extract_text_from_file(file_bytes, filename, model=None):
     ext = filename.split('.')[-1].lower()
@@ -83,7 +116,9 @@ def extract_text_with_tesseract_pdf(pdf_bytes):
             pix = page.get_pixmap()
             img_bytes = pix.tobytes("png")
             img = Image.open(BytesIO(img_bytes))
-            page_text = pytesseract.image_to_string(img, lang='por')
+            processed = preprocess_image(img)
+            config = '--psm 1 --oem 3 -l por'
+            page_text = pytesseract.image_to_string(processed, config=config)
             if page_text.strip():
                 all_text += f"\n--- Página {page_num} ---\n{page_text}\n"
         doc.close()
@@ -95,7 +130,9 @@ def extract_text_with_tesseract_pdf(pdf_bytes):
 def extract_text_from_image(file_bytes):
     try:
         img = Image.open(BytesIO(file_bytes))
-        text = pytesseract.image_to_string(img, lang='por')
+        processed = preprocess_image(img)
+        config = '--psm 1 --oem 3 -l por'
+        text = pytesseract.image_to_string(processed, config=config)
         return text.strip()
     except Exception as e:
         st.error(f"Erro no OCR de imagem: {str(e)}")

@@ -43,7 +43,7 @@ if files:
         st.subheader("Contexto selecionado")
         models = get_available_models()
         default_model = models[0] if models else "gemma3:4b"
-        model = st.selectbox("Modelo LLM (para extração com visão)", models if models else ["gemma3:4b"], key="vision_model")
+        model = st.selectbox("Modelo LLM (para geração)", models if models else ["gemma3:4b"], key="llm_model")
 
         if st.button("Extrair texto dos selecionados"):
             context = ""
@@ -51,7 +51,7 @@ if files:
                 file_path = os.path.join(DOCS_DIR, f)
                 with open(file_path, "rb") as fh:
                     file_bytes = fh.read()
-                text = extract_text_from_file(file_bytes, f, model=model)
+                text = extract_text_from_file(file_bytes, f)
                 if text:
                     context += f"\n--- {f} ---\n{text}\n"
                 else:
