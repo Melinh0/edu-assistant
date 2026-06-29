@@ -25,23 +25,30 @@ def delete_file(filename, directory):
 def pandoc_convert(text, output_format, extra_args=None):
     if extra_args is None:
         extra_args = []
-    try:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as md_file:
-            md_path = md_file.name
-            md_file.write(text)
-        output_suffix = '.docx' if output_format == 'docx' else '.pdf'
-        with tempfile.NamedTemporaryFile(suffix=output_suffix, delete=False) as out_file:
-            out_path = out_file.name
-        cmd = ['pandoc', md_path, '-o', out_path, '--standalone'] + extra_args
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        with open(out_path, 'rb') as f:
-            result_bytes = f.read()
-        os.unlink(md_path)
-        os.unlink(out_path)
-        return result_bytes
-    except Exception as e:
-        print(f"Erro no pandoc (subprocess): {e}", file=sys.stderr)
-        return None
+    engines = ['xelatex', 'pdflatex']  
+    for engine in engines:
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as md_file:
+                md_path = md_file.name
+                md_file.write(text)
+            output_suffix = '.docx' if output_format == 'docx' else '.pdf'
+            with tempfile.NamedTemporaryFile(suffix=output_suffix, delete=False) as out_file:
+                out_path = out_file.name
+            cmd = ['pandoc', md_path, '-o', out_path, '--standalone']
+            if output_format == 'pdf':
+                cmd.extend(['--pdf-engine', engine])
+            cmd.extend(extra_args)
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            with open(out_path, 'rb') as f:
+                result_bytes = f.read()
+            os.unlink(md_path)
+            os.unlink(out_path)
+            return result_bytes
+        except subprocess.CalledProcessError as e:
+            continue
+        except Exception as e:
+            continue
+    return None
 
 def create_download_link(text, filename, format):
     if format == "txt":
@@ -69,7 +76,7 @@ def create_download_link(text, filename, format):
         return b, f"{filename}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
     elif format == "pdf":
-        pdf_bytes = pandoc_convert(text, 'pdf', extra_args=['--pdf-engine=xelatex'])
+        pdf_bytes = pandoc_convert(text, 'pdf', extra_args=[])
         if pdf_bytes:
             b = BytesIO(pdf_bytes)
             b.seek(0)

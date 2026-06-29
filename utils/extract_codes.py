@@ -10,7 +10,7 @@ def should_ignore(file_path: Path) -> bool:
             return True
     return False
 
-def compile_py_to_txt(source_dir: str, output_dir: str, output_filename: str = "compiled_code.txt") -> None:
+def compile_py_to_txt(source_dir: str, output_dir: str = ".", output_filename: str = "compiled_code.txt") -> None:
     source = Path(source_dir).resolve()
     output_path = Path(output_dir).resolve()
     output_path.mkdir(parents=True, exist_ok=True)
@@ -31,7 +31,7 @@ def compile_py_to_txt(source_dir: str, output_dir: str, output_filename: str = "
     print(f"Writing concatenated code to: {output_file}")
 
     with open(output_file, "w", encoding="utf-8") as out:
-        for py_file in sorted(py_files):  # ordena para consistência
+        for py_file in sorted(py_files):
             relative_path = py_file.relative_to(source)
             out.write(f"\n\n{'='*80}\n")
             out.write(f"FILE: {relative_path}\n")
@@ -47,7 +47,7 @@ def compile_py_to_txt(source_dir: str, output_dir: str, output_filename: str = "
 
 def main():
     source = os.getcwd()
-    output_dir = "edu-assistant/extracted_code"
+    output_dir = "."
 
     if len(sys.argv) >= 2:
         source = sys.argv[1]

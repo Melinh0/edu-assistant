@@ -10,22 +10,76 @@ Ferramenta para professores particulares: gerencie PDFs de alunos, extraia texto
 - Geração de listas de exercícios com gabarito
 - Download dos resultados em TXT, DOCX ou PDF
 
-## Como usar
-1. Clone o repositório.
-2. Instale as dependências: `pip install -r requirements.txt`
-3. Configure as variáveis de ambiente no arquivo `.env` (veja `.env.example`).
-4. Execute: `streamlit run app.py`
+## Como usar com Docker
+
+### Pré-requisitos
+- Docker e Docker Compose instalados
+
+### Passos
+1. Clone o repositório:
+   ```bash
+   git clone https://github.com/seu-usuario/edu-assistant.git
+   cd edu-assistant
+   ```
+
+2. Copie o arquivo de exemplo de variáveis de ambiente:
+   ```bash
+   cp .env.example .env
+   ```
+   Edite o `.env` com suas chaves da API (OCR.space) e, se necessário, ajuste o `OLLAMA_HOST` (padrão `http://ollama:11434` para uso com Docker).
+
+3. Inicie os serviços com Docker Compose:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. Aguarde o download dos modelos Ollama (a primeira execução pode levar alguns minutos). Para baixar um modelo específico, execute:
+   ```bash
+   docker exec -it edu-assistant-ollama-1 ollama pull gemma3:4b
+   ```
+   (Substitua pelo modelo desejado, conforme listado no `.env`)
+
+5. Acesse a aplicação em `http://localhost:8501` no navegador.
+
+6. Para parar os containers:
+   ```bash
+   docker-compose down
+   ```
+
+## Como usar sem Docker (desenvolvimento local)
+
+1. Instale o Python 3.12+ e o `uv`:
+   ```bash
+   pip install uv
+   ```
+
+2. Instale as dependências:
+   ```bash
+   uv sync
+   ```
+
+3. Configure o arquivo `.env` com as variáveis necessárias (veja `.env.example`).
+
+4. Execute a aplicação:
+   ```bash
+   uv run streamlit run app.py
+   ```
+
 5. Acesse `http://localhost:8501` no navegador.
 
 ## Variáveis de ambiente
-- `OLLAMA_API_KEY`: chave da API Ollama
-- `OLLAMA_HOST`: URL da API (padrão: https://ollama.com)
-- `OCR_SPACE_API_KEY`: chave da API OCR.space
-- `OLLAMA_AVAILABLE_MODELS`: lista de modelos separados por vírgula
-- `OLLAMA_MAX_TOKENS`: limite máximo de tokens gerados
+
+| Variável | Descrição | Exemplo |
+|----------|-----------|---------|
+| `OLLAMA_API_KEY` | Chave da API Ollama (opcional para local) | `sk-...` |
+| `OLLAMA_HOST` | URL do servidor Ollama | `http://ollama:11434` |
+| `OLLAMA_AVAILABLE_MODELS` | Lista de modelos separados por vírgula | `gemma3:4b,gemma4:31b` |
+| `OLLAMA_MAX_TOKENS` | Máximo de tokens gerados | `4096` |
+| `OCR_SPACE_API_KEY` | Chave da API OCR.space (obrigatória) | `K...` |
 
 ## Tecnologias
 - Streamlit (interface)
 - OCR.space (OCR)
 - Ollama (LLM)
-- python-docx, fpdf (exportação)
+- python-docx, reportlab (exportação)
+- Docker (containerização)
