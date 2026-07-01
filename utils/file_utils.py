@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 import subprocess
 from io import BytesIO
