@@ -106,7 +106,7 @@ def generate_exercises(context, user_prompt, model, cache_buster=None):
         f"Com base no conteúdo, {user_prompt}. "
         "Cada questão com 4 alternativas (a, b, c, d). Se for multipla escolha, indique a resposta correta. "
         "Coloque cada alternativa em uma nova linha, indentada com 4 espaços, iniciando com 'a) ', 'b) ', etc. Se for multipla escolha."
-        "Inclua gabarito no final. Use LaTeX quando necessário. Somente se for multipla escolha. Sempre respeite o pedido do prompt"
+        "Use LaTeX quando necessário. Somente se for multipla escolha. Sempre respeite o pedido do prompt"
     )
     raw = call_ollama(prompt, model, context, cache_buster=cache_buster)
     return format_alternatives(raw) if raw else raw

@@ -10,6 +10,7 @@ import streamlit as st
 from utils.file_utils import save_uploaded_file, get_files_list, delete_file, create_download_link
 from utils.ocr import extract_text_from_file
 from utils.llm import generate_plan, generate_exercises, get_available_models, call_ollama, call_ollama_stream
+from utils.pdf_processor import process_pdf
 
 BASE_DIR = Path(__file__).parent
 MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS"))
@@ -186,15 +187,26 @@ uploaded_file = st.file_uploader(
     "Envie um arquivo (PDF, PPTX, PNG, JPG, JPEG, TXT, DOCX)",
     type=["pdf", "pptx", "png", "jpg", "jpeg", "txt", "docx"]
 )
-if uploaded_file:
-    target_folder = Path(file_or_folder)
-    if not target_folder.exists():
-        target_folder = BASE_DIR / "docs"
-        target_folder.mkdir(exist_ok=True)
-    save_uploaded_file(uploaded_file, str(target_folder))
-    st.success(f"Arquivo {uploaded_file.name} salvo com sucesso!")
-    st.cache_data.clear()
-    st.rerun()
+
+if "upload_processed" not in st.session_state:
+    st.session_state.upload_processed = False
+if "last_uploaded" not in st.session_state:
+    st.session_state.last_uploaded = None
+
+if uploaded_file is not None:
+    if not st.session_state.upload_processed or st.session_state.last_uploaded != uploaded_file.name:
+        st.session_state.upload_processed = False
+        st.session_state.last_uploaded = uploaded_file.name
+        target_folder = Path(file_or_folder)
+        if not target_folder.exists():
+            target_folder = BASE_DIR / "docs"
+            target_folder.mkdir(exist_ok=True)
+        file_path = save_uploaded_file(uploaded_file, str(target_folder))
+        if file_path:
+            st.session_state.upload_processed = True
+            st.success(f"Arquivo {uploaded_file.name} salvo com sucesso!")
+            st.cache_data.clear()
+            st.rerun()
 
 if Path(file_or_folder).exists():
     files = get_files_list(file_or_folder)
@@ -233,27 +245,48 @@ if Path(file_or_folder).exists():
                         st.rerun()
         if selected != st.session_state.get("selected_files", []):
             st.session_state.selected_files = selected
+
         if st.button("📄 Extrair texto dos selecionados"):
             if selected:
                 context = ""
-                for f in selected:
-                    file_path = os.path.join(file_or_folder, f)
-                    with open(file_path, "rb") as fh:
-                        file_bytes = fh.read()
-                    text = extract_text_from_file(file_bytes, f, model=selected_model)
-                    if text:
-                        context += f"\n--- {f} ---\n{text}\n"
+                with st.spinner("Extraindo texto dos arquivos selecionados..."):
+                    for f in selected:
+                        file_path = os.path.join(file_or_folder, f)
+                        if f.lower().endswith(".pdf"):
+                            import tempfile
+                            with tempfile.TemporaryDirectory() as tmpdir:
+                                tmp_path = Path(tmpdir)
+                                pdf_src = Path(file_path)
+                                pdf_dest = tmp_path / pdf_src.name
+                                with open(pdf_src, 'rb') as src:
+                                    with open(pdf_dest, 'wb') as dst:
+                                        dst.write(src.read())
+                                process_pdf(pdf_dest, tmp_path / "output")
+                                txt_files = list((tmp_path / "output").glob("*.txt"))
+                                if txt_files:
+                                    page_text = ""
+                                    for txt_file in sorted(txt_files):
+                                        with open(txt_file, 'r', encoding='utf-8') as tf:
+                                            page_text += f"\n--- {f} - {txt_file.stem} ---\n"
+                                            page_text += tf.read() + "\n"
+                                    context += page_text
+                                else:
+                                    st.warning(f"Falha ao extrair texto do PDF {f}")
+                        else:
+                            with open(file_path, "rb") as fh:
+                                file_bytes = fh.read()
+                            text = extract_text_from_file(file_bytes, f, model=selected_model)
+                            if text:
+                                context += f"\n--- {f} ---\n{text}\n"
+                            else:
+                                st.warning(f"Falha ao extrair {f}")
+                    if context.strip():
+                        st.session_state.context_text = context
+                        st.success("Texto extraído com sucesso!")
                     else:
-                        st.warning(f"Falha ao extrair {f}")
-                if context.strip():
-                    st.session_state.context_text = context
-                    st.success("Texto extraído com sucesso!")
-                else:
-                    st.warning("Nenhum texto foi extraído.")
+                        st.warning("Nenhum texto foi extraído.")
             else:
                 st.warning("Selecione pelo menos um arquivo.")
-    else:
-        st.info("Nenhum arquivo na pasta.")
 
 if st.session_state.context_text:
     st.text_area("📝 Contexto extraído (prévia)", st.session_state.context_text[:1000], height=150)
@@ -381,14 +414,11 @@ with col2:
 
 if st.session_state.get("modo") == "plan" and "plan" in st.session_state:
     st.subheader("📖 Plano de Aula")
-    plan_edit = st.text_area(
+    st.text_area(
         "Edite o texto do Plano (markdown):",
-        value=st.session_state.plan,
-        height=300,
-        key="plan_editor"
+        key="plan",
+        height=300
     )
-    if plan_edit != st.session_state.plan:
-        st.session_state.plan = plan_edit
     st.markdown("---")
     st.markdown(st.session_state.plan)
     col1, col2, col3 = st.columns(3)
@@ -404,14 +434,11 @@ if st.session_state.get("modo") == "plan" and "plan" in st.session_state:
 
 elif st.session_state.get("modo") == "exercises" and "exercises" in st.session_state:
     st.subheader("📝 Lista de Exercícios")
-    ex_edit = st.text_area(
+    st.text_area(
         "Edite os Exercícios (markdown):",
-        value=st.session_state.exercises,
-        height=300,
-        key="ex_editor"
+        key="exercises",
+        height=300
     )
-    if ex_edit != st.session_state.exercises:
-        st.session_state.exercises = ex_edit
     st.markdown("---")
     st.markdown(st.session_state.exercises)
     col1, col2, col3 = st.columns(3)
