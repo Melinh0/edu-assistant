@@ -10,10 +10,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
-RUN pip install uv && uv sync --no-dev
-
 COPY . .
+
+RUN pip install uv && uv sync --no-dev
 
 EXPOSE 8501
 

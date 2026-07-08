@@ -4,7 +4,6 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - OLLAMA_AVAILABLE_MODELS=${OLLAMA_AVAILABLE_MODELS:-gemma3:4b,gemma4:31b,gemma3:12b}
       - OLLAMA_MAX_TOKENS=${OLLAMA_MAX_TOKENS}
@@ -12,19 +11,3 @@ services:
     volumes:
       - ./docs:/app/docs
       - ./.env:/app/.env
-    depends_on:
-      - ollama
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_NUM_PARALLEL=4
-      - OLLAMA_MAX_LOADED_MODELS=2
-    command: serve
-
-volumes:
-  ollama_data:
