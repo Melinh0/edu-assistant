@@ -4,9 +4,15 @@ services:
     ports:
       - "8501:8501"
     environment:
+      - PROVIDER=${PROVIDER:-ollama}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+      - OLLAMA_HOST=${OLLAMA_HOST}
       - OLLAMA_AVAILABLE_MODELS=${OLLAMA_AVAILABLE_MODELS:-gemma3:4b,gemma4:31b,gemma3:12b}
       - OLLAMA_MAX_TOKENS=${OLLAMA_MAX_TOKENS}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - NVIDIA_BASE_URL=${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      - NVIDIA_AVAILABLE_MODELS=${NVIDIA_AVAILABLE_MODELS}
+      - NVIDIA_MAX_TOKENS=${NVIDIA_MAX_TOKENS}
       - OCR_SPACE_API_KEY=${OCR_SPACE_API_KEY}
     volumes:
       - ./docs:/app/docs
