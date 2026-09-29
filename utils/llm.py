@@ -8,15 +8,25 @@ import re
 
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST")
-OLLAMA_MAX_TOKENS = int(os.getenv("OLLAMA_MAX_TOKENS"))
+OLLAMA_MAX_TOKENS = int(os.getenv("OLLAMA_MAX_TOKENS", "40000"))
+
+PROVIDER = os.getenv("PROVIDER", "ollama").strip().lower()
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+NVIDIA_BASE_URL = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
+NVIDIA_MAX_TOKENS = int(os.getenv("NVIDIA_MAX_TOKENS", "4096"))
 
 def get_available_models():
-    models_str = os.getenv("OLLAMA_AVAILABLE_MODELS", "gemma3:4b, gemma4:31b, gemma3:12b")
+    if PROVIDER == "nvidia":
+        models_str = os.getenv("NVIDIA_AVAILABLE_MODELS", "meta/llama-3.1-8b-instruct")
+    else:
+        models_str = os.getenv("OLLAMA_AVAILABLE_MODELS", "gemma3:4b, gemma4:31b, gemma3:12b")
     return [m.strip() for m in models_str.split(',')]
 
 def call_ollama(prompt, model, context="", cache_buster=None):
     unique_id = f"{cache_buster}_{int(time.time())}_{random.randint(0, 1000000)}"
     full_prompt = f"Contexto:\n{context}\n\nInstrução (ID: {unique_id}):\n{prompt}"
+    if PROVIDER == "nvidia":
+        return _call_nvidia(full_prompt, model)
     headers = {
         "Authorization": f"Bearer {OLLAMA_API_KEY}",
         "Content-Type": "application/json"
@@ -47,6 +57,8 @@ def call_ollama(prompt, model, context="", cache_buster=None):
 
 def call_ollama_stream(prompt, model, context=""):
     full_prompt = f"Contexto:\n{context}\n\nInstrução:\n{prompt}"
+    if PROVIDER == "nvidia":
+        return _call_nvidia_stream(full_prompt, model)
     headers = {
         "Authorization": f"Bearer {OLLAMA_API_KEY}",
         "Content-Type": "application/json"
@@ -84,6 +96,77 @@ def call_ollama_stream(prompt, model, context=""):
             return ""
     except Exception as e:
         st.error(f"Exceção na chamada Ollama: {str(e)}")
+        return ""
+
+def _call_nvidia(full_prompt, model):
+    headers = {
+        "Authorization": f"Bearer {NVIDIA_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": full_prompt}],
+        "max_tokens": NVIDIA_MAX_TOKENS,
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "stream": False
+    }
+    url = f"{NVIDIA_BASE_URL}/chat/completions"
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=600)
+        if response.status_code == 200:
+            data = response.json()
+            return data['choices'][0]['message']['content']
+        else:
+            st.error(f"Erro na API NVIDIA: {response.status_code} - {response.text}")
+            return ""
+    except Exception as e:
+        st.error(f"Exceção na chamada NVIDIA: {str(e)}")
+        return ""
+
+def _call_nvidia_stream(full_prompt, model):
+    headers = {
+        "Authorization": f"Bearer {NVIDIA_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": full_prompt}],
+        "max_tokens": NVIDIA_MAX_TOKENS,
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "stream": True
+    }
+    url = f"{NVIDIA_BASE_URL}/chat/completions"
+    try:
+        response = requests.post(url, json=payload, headers=headers, stream=True, timeout=120)
+        if response.status_code == 200:
+            full_text = ""
+            placeholder = st.empty()
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                decoded = line.decode('utf-8')
+                if not decoded.startswith("data: "):
+                    continue
+                chunk = decoded[len("data: "):]
+                if chunk.strip() == "[DONE]":
+                    break
+                try:
+                    data = json.loads(chunk)
+                    delta = data['choices'][0]['delta'].get('content')
+                    if delta:
+                        full_text += delta
+                        placeholder.markdown(full_text + "▌")
+                except:
+                    pass
+            placeholder.markdown(full_text)
+            return full_text
+        else:
+            st.error(f"Erro na API NVIDIA: {response.status_code} - {response.text}")
+            return ""
+    except Exception as e:
+        st.error(f"Exceção na chamada NVIDIA: {str(e)}")
         return ""
 
 def format_alternatives(text):

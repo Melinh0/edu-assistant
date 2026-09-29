@@ -71,15 +71,22 @@ Ferramenta para professores particulares: gerencie PDFs de alunos, extraia texto
 
 | Variável | Descrição | Exemplo |
 |----------|-----------|---------|
+| `PROVIDER` | Provedor de LLM: `ollama` ou `nvidia` | `ollama` |
 | `OLLAMA_API_KEY` | Chave da API Ollama (opcional para local) | `sk-...` |
 | `OLLAMA_HOST` | URL do servidor Ollama | `http://ollama:11434` |
 | `OLLAMA_AVAILABLE_MODELS` | Lista de modelos separados por vírgula | `gemma3:4b,gemma4:31b` |
 | `OLLAMA_MAX_TOKENS` | Máximo de tokens gerados | `4096` |
+| `NVIDIA_API_KEY` | Chave da API NVIDIA (build.nvidia.com) | `nvapi-...` |
+| `NVIDIA_BASE_URL` | Endpoint da API NVIDIA (OpenAI-compatible) | `https://integrate.api.nvidia.com/v1` |
+| `NVIDIA_AVAILABLE_MODELS` | Lista de modelos NVIDIA separados por vírgula | `meta/llama-3.1-8b-instruct` |
+| `NVIDIA_MAX_TOKENS` | Máximo de tokens gerados (NVIDIA) | `4096` |
 | `OCR_SPACE_API_KEY` | Chave da API OCR.space (obrigatória) | `K...` |
+
+Para usar a NVIDIA, crie uma chave gratuita em https://build.nvidia.com (endpoints "Try" gratuitos com limite de taxa), defina `PROVIDER=nvidia`, `NVIDIA_API_KEY` e `NVIDIA_AVAILABLE_MODELS` com os slugs dos modelos desejados.
 
 ## Tecnologias
 - Streamlit (interface)
 - OCR.space (OCR)
-- Ollama (LLM)
+- Ollama / NVIDIA NIM (LLM)
 - python-docx, reportlab (exportação)
 - Docker (containerização)
