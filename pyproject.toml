@@ -1,0 +1,20 @@
+[project]
+name = "edu-assistant"
+version = "0.2.0"
+description = "Ferramenta para professores particulares: extração rápida multi-formato com cache, separação por aluno, RAG com BM25 e geração de planos e exercícios com LLM."
+requires-python = ">=3.10"
+dependencies = [
+    "streamlit>=1.28.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "pymupdf>=1.26.5",
+    "pytesseract>=0.3.13",
+    "pillow>=10.0.0",
+    "python-pptx>=1.0.2",
+    "python-docx>=1.1.0",
+    "reportlab>=4.0.0",
+    "beautifulsoup4>=4.12.0",
+]
+
+[dependency-groups]
+dev = []
