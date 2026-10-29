@@ -191,4 +191,6 @@ build/
 edu_assistant.egg-info
 
 # Dados dos alunos (nunca versionar - privacidade)
-docs/
+docs/*/
+!docs/assets/
+!docs/.gitkeep

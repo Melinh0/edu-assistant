@@ -114,3 +114,38 @@ Este projeto lida com materiais de alunos (menores de idade). Por isso:
 - A pasta `docs/` **não é versionada** — os dados ficam apenas na máquina de quem usa.
 - O `.env` (com chaves de API) **não é versionado** — use `.env.example` como modelo.
 - Antes de publicar um fork, revise o histórico do Git para garantir que nenhum material de aluno foi commitado.
+
+---
+
+## Visualizações e Métricas (Data Science View)
+
+### Dashboard Resumo
+![Dashboard Resumo](docs/assets/dashboard_resumo.png)
+
+### Pipeline de Extração Inteligente
+Extração em cascata com cache + fallbacks progressivos (OCR local → OCR.space → Visão LLM).
+![Pipeline de Extração](docs/assets/pipeline_extracao.png)
+
+### Rotação de Chaves e Failover Automático
+Distribuição round-robin entre 7 chaves Ollama com detecção automática de quota (429) e failover.
+![Rotação de Chaves](docs/assets/rotacao_chaves.png)
+
+### Busca BM25: Contexto Relevante
+Score de relevância vs. tamanho do contexto selecionado para diferentes tipos de consulta pedagógica.
+![BM25 Relevância](docs/assets/bm25_relevancia.png)
+
+### Formatos Suportados
+Volume típico de processamento por formato de arquivo.
+![Formatos Suportados](docs/assets/formatos_suportados.png)
+
+### Modelos Gratuitos Ollama Cloud
+Comparativo de janela de contexto e velocidade relativa entre modelos gratuitos disponíveis.
+![Modelos Gratuitos](docs/assets/modelos_gratuitos.png)
+
+### Tipos de Saída e Exportação
+Conteúdo gerado (planos, exercícios, simulados) e formatos de download (TXT, DOCX, PDF).
+![Tipos de Saída](docs/assets/tipos_saida.png)
+
+---
+
+*Gráficos gerados com `scripts/generate_readme_charts.py` usando dados sintéticos representativos — nenhum dado real de aluno.*
